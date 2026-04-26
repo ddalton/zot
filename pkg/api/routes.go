@@ -352,10 +352,26 @@ func (rh *RouteHandler) ListTags(response http.ResponseWriter, request *http.Req
 
 	tags, err := imgStore.GetImageTags(name)
 	if err != nil {
-		e := apiErr.NewError(apiErr.NAME_UNKNOWN).AddDetail(map[string]string{"name": name})
-		zcommon.WriteJSON(response, http.StatusNotFound, apiErr.NewErrorList(e))
+		if isSyncOnDemandEnabled(*rh.c) {
+			rh.c.Log.Info().Str("repository", name).
+				Msg("trying to get remote tags on demand")
 
-		return
+			remoteTags, syncErr := rh.c.SyncOnDemand.SyncTagList(request.Context(), name)
+			if syncErr != nil {
+				rh.c.Log.Err(syncErr).Str("repository", name).
+					Msg("failed to get remote tags on demand")
+			} else if len(remoteTags) > 0 {
+				tags = remoteTags
+				err = nil
+			}
+		}
+
+		if err != nil {
+			e := apiErr.NewError(apiErr.NAME_UNKNOWN).AddDetail(map[string]string{"name": name})
+			zcommon.WriteJSON(response, http.StatusNotFound, apiErr.NewErrorList(e))
+
+			return
+		}
 	}
 
 	// Tags need to be sorted regardless of pagination parameters

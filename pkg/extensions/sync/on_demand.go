@@ -105,6 +105,31 @@ func (onDemand *BaseOnDemand) SyncReference(ctx context.Context, repo string,
 	return err
 }
 
+func (onDemand *BaseOnDemand) SyncTagList(ctx context.Context, repo string) ([]string, error) {
+	for _, service := range onDemand.services {
+		if err := service.SetNextAvailableURL(); err != nil {
+			if !errors.Is(err, zerr.ErrSyncPingRegistry) {
+				return nil, err
+			}
+
+			continue
+		}
+
+		tags, err := service.GetRemoteTags(ctx, repo)
+		if err != nil {
+			onDemand.log.Error().Err(err).Str("repo", repo).Msg("failed to get remote tags on demand")
+
+			continue
+		}
+
+		if len(tags) > 0 {
+			return tags, nil
+		}
+	}
+
+	return nil, zerr.ErrSyncImageFilteredOut
+}
+
 func (onDemand *BaseOnDemand) syncImage(ctx context.Context, repo, reference string, syncResult chan error) {
 	var err error
 	for serviceID, service := range onDemand.services {

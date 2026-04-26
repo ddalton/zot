@@ -499,6 +499,32 @@ func (service *BaseService) syncTag(ctx context.Context, destinationRepo, remote
 	return manifestDigest, nil
 }
 
+func (service *BaseService) GetRemoteTags(ctx context.Context, repo string) ([]string, error) {
+	remoteRepo := repo
+
+	if len(service.config.Content) > 0 {
+		remoteRepo = service.contentManager.GetRepoSource(repo)
+		if remoteRepo == "" {
+			return nil, zerr.ErrSyncImageFilteredOut
+		}
+	}
+
+	remoteRepo = service.remote.GetDockerRemoteRepo(remoteRepo)
+
+	var tags []string
+	var err error
+
+	if err = retry.RetryIfNecessary(ctx, func() error {
+		tags, err = service.remote.GetRepoTags(remoteRepo)
+
+		return err
+	}, service.retryOptions); err != nil {
+		return nil, err
+	}
+
+	return tags, nil
+}
+
 func (service *BaseService) ResetCatalog() {
 	service.log.Info().Msg("resetting catalog")
 

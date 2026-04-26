@@ -32,6 +32,8 @@ type Service interface {
 	// Sync a single reference for an image.
 	SyncReference(ctx context.Context, repo string, subjectDigestStr string,
 		referenceType string) error // used by sync on demand
+	// Get tags for a repo from remote registry.
+	GetRemoteTags(ctx context.Context, repo string) ([]string, error) // used by sync on demand for tag list
 	// Remove all internal catalog entries.
 	ResetCatalog() // used by scheduler to empty out the catalog after a sync periodically roundtrip finishes
 	// Sync supports multiple urls per registry, before a sync repo/image/ref 'ping' each url.

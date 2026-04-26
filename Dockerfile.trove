@@ -1,0 +1,4 @@
+FROM gcr.io/distroless/base-nossl-debian12:latest
+COPY bin/zot-linux-arm64 /usr/bin/zot
+ENTRYPOINT ["/usr/bin/zot"]
+CMD ["serve", "/etc/zot/config.json"]
