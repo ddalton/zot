@@ -220,7 +220,7 @@ func TestDestinationRegistry(t *testing.T) {
 		repoName := "repo"
 
 		storeController := storage.StoreController{DefaultStore: syncImgStore}
-		registry := NewDestinationRegistry(storeController, storeController, nil, log)
+		registry := NewDestinationRegistry(storeController, storeController, nil, log, false)
 		imageReference, err := registry.GetImageReference(repoName, "1.0")
 		So(err, ShouldBeNil)
 		So(imageReference, ShouldNotBeNil)
@@ -338,7 +338,7 @@ func TestDestinationRegistry(t *testing.T) {
 			repoName := "repo"
 
 			storeController := storage.StoreController{DefaultStore: syncImgStore}
-			registry := NewDestinationRegistry(storeController, storeController, nil, log)
+			registry := NewDestinationRegistry(storeController, storeController, nil, log, false)
 
 			err = registry.CommitImage(imageReference, repoName, "1.0")
 			So(err, ShouldBeNil)
@@ -381,7 +381,7 @@ func TestDestinationRegistry(t *testing.T) {
 
 					return nil
 				},
-			}, log)
+			}, log, false)
 
 			err = registry.CommitImage(imageReference, repoName, "1.0")
 			So(err, ShouldNotBeNil)
@@ -393,7 +393,7 @@ func TestDestinationRegistry(t *testing.T) {
 				SetRepoReferenceFn: func(ctx context.Context, repo, reference string, imageMeta mTypes.ImageMeta) error {
 					return zerr.ErrRepoMetaNotFound
 				},
-			}, log)
+			}, log, false)
 
 			err = registry.CommitImage(imageReference, repoName, "1.0")
 			So(err, ShouldNotBeNil)

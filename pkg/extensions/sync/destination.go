@@ -30,10 +30,11 @@ import (
 )
 
 type DestinationRegistry struct {
-	storeController storage.StoreController
-	tempStorage     OciLayoutStorage
-	metaDB          mTypes.MetaDB
-	log             log.Logger
+	storeController   storage.StoreController
+	tempStorage       OciLayoutStorage
+	metaDB            mTypes.MetaDB
+	log               log.Logger
+	onlySyncOnMissing bool
 }
 
 func NewDestinationRegistry(
@@ -41,14 +42,14 @@ func NewDestinationRegistry(
 	tempStoreController storage.StoreController, // temp store controller
 	metaDB mTypes.MetaDB,
 	log log.Logger,
+	onlySyncOnMissing bool,
 ) Destination {
 	return &DestinationRegistry{
-		storeController: storeController,
-		tempStorage:     NewOciLayoutStorage(tempStoreController),
-		metaDB:          metaDB,
-		// first we sync from remote (using containers/image copy from docker:// to oci:) to a temp imageStore
-		// then we copy the image from tempStorage to zot's storage using ImageStore APIs
-		log: log,
+		storeController:   storeController,
+		tempStorage:       NewOciLayoutStorage(tempStoreController),
+		metaDB:            metaDB,
+		log:               log,
+		onlySyncOnMissing: onlySyncOnMissing,
 	}
 }
 
@@ -69,6 +70,13 @@ func (registry *DestinationRegistry) CanSkipImage(repo, tag string, imageDigest 
 	}
 
 	if localImageManifestDigest != imageDigest {
+		if registry.onlySyncOnMissing {
+			registry.log.Info().Str("repo", repo).Str("reference", tag).
+				Msg("image exists locally with different digest, skipping sync (onlySyncOnMissing)")
+
+			return true, nil
+		}
+
 		registry.log.Info().Str("repo", repo).Str("reference", tag).
 			Str("localDigest", localImageManifestDigest.String()).
 			Str("remoteDigest", imageDigest.String()).
