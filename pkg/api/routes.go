@@ -2091,23 +2091,19 @@ func getImageManifest(ctx context.Context, routeHandler *RouteHandler, imgStore 
 ) ([]byte, godigest.Digest, string, error) {
 	syncEnabled := isSyncOnDemandEnabled(*routeHandler.c)
 
-	_, digestErr := godigest.Parse(reference)
-	if digestErr == nil {
-		// if it's a digest then return local cached image, if not found and sync enabled, then try to sync
-		content, digest, mediaType, err := imgStore.GetImageManifest(name, reference)
-		if err == nil || !syncEnabled {
-			return content, digest, mediaType, err
-		}
+	// Check local cache first for both digest and tag references.
+	// This avoids expensive upstream round-trips when the image is already cached.
+	content, digest, mediaType, err := imgStore.GetImageManifest(name, reference)
+	if err == nil || !syncEnabled {
+		return content, digest, mediaType, err
 	}
 
-	if syncEnabled {
-		routeHandler.c.Log.Info().Str("repository", name).Str("reference", reference).
-			Msg("trying to get updated image by syncing on demand")
+	routeHandler.c.Log.Info().Str("repository", name).Str("reference", reference).
+		Msg("image not found locally, syncing on demand from upstream")
 
-		if errSync := routeHandler.c.SyncOnDemand.SyncImage(ctx, name, reference); errSync != nil {
-			routeHandler.c.Log.Err(errSync).Str("repository", name).Str("reference", reference).
-				Msg("failed to sync image")
-		}
+	if errSync := routeHandler.c.SyncOnDemand.SyncImage(ctx, name, reference); errSync != nil {
+		routeHandler.c.Log.Err(errSync).Str("repository", name).Str("reference", reference).
+			Msg("failed to sync image")
 	}
 
 	return imgStore.GetImageManifest(name, reference)
